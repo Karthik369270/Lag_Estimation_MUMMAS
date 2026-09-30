@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MUMMAS · Data Curation</title>
+<style>
+@font-face{font-family:"LEMON MILK";src:url("/assets/LemonMilk-Light.otf") format("opentype");font-weight:300;font-display:swap}
+@font-face{font-family:"LEMON MILK";src:url("/assets/LemonMilk-Regular.otf") format("opentype");font-weight:400;font-display:swap}
+@font-face{font-family:"LEMON MILK";src:url("/assets/LemonMilk-Medium.otf") format("opentype");font-weight:500;font-display:swap}
+@font-face{font-family:"LEMON MILK";src:url("/assets/LemonMilk-Bold.otf") format("opentype");font-weight:700;font-display:swap}
+
+:root{
+  --bg:#f3f2f2; --surface:#eae9e9; --paper:#f8f4f4; --sunk:#dcdad6;
+  --ink:#201f1d; --muted:rgba(32,31,29,.60); --faint:rgba(32,31,29,.40);
+  --rule:rgba(32,31,29,.16); --rule-hard:#201f1d;
+  --gold:#b68235; --gold-5:#c28d41; --gold-6:#a06f24;
+  --lidar-bg:#ffffff; --lidar-ink:32,31,29;
+  --ok:#4a7c4e; --warn:#c07c2e; --bad:#a8402f;
+  --disp:"LEMON MILK","Inter","Segoe UI",system-ui,sans-serif;
+  --body:"Aptos","Aptos Display","Inter","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#1a1917; --surface:#232120; --paper:#201f1d; --sunk:#141312;
+    --ink:#ece8e2; --muted:rgba(236,232,226,.62); --faint:rgba(236,232,226,.40);
+    --rule:rgba(236,232,226,.18); --rule-hard:#ece8e2;
+    --gold:#d8a256; --gold-5:#c9954c; --gold-6:#e1ad66;
+    --lidar-bg:#0e0d0c; --lidar-ink:225,173,102;
+    --ok:#63a068; --warn:#dd9448; --bad:#c95a4a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1a1917; --surface:#232120; --paper:#201f1d; --sunk:#141312;
+  --ink:#ece8e2; --muted:rgba(236,232,226,.62); --faint:rgba(236,232,226,.40);
+  --rule:rgba(236,232,226,.18); --rule-hard:#ece8e2;
+  --gold:#d8a256; --gold-5:#c9954c; --gold-6:#e1ad66;
+  --lidar-bg:#0e0d0c; --lidar-ink:225,173,102;
+  --ok:#63a068; --warn:#dd9448; --bad:#c95a4a;
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.55 var(--body)}
+h1,h2,h3{font-family:var(--disp);font-weight:400;margin:0;line-height:1.02;text-wrap:balance}
+button,input,select{font-family:inherit}
+.lbl{font:400 11px/1.4 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+img{max-width:100%}
+
+/* ── shell ─────────────────────────────────────────────────────────── */
+.wrap{max-width:1560px;margin:0 auto;padding:18px 22px 56px}
+header.top{display:flex;align-items:center;gap:14px;padding-bottom:12px;border-bottom:1px solid var(--rule-hard)}
+header.top img{height:30px;width:auto}
+header.top .ttl{font-family:var(--disp);font-size:16px;letter-spacing:.06em}
+header.top .sub{font:400 11px/1.4 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+header.top .sp{flex:1}
+.theme{border:1px solid var(--rule);background:var(--bg);color:var(--muted);padding:7px 11px;cursor:pointer;
+  font:400 10.5px/1 var(--body);letter-spacing:.1em;text-transform:uppercase}
+
+/* ── controls ──────────────────────────────────────────────────────── */
+.panel{border:1px solid var(--rule);background:var(--paper);padding:14px 16px;margin-top:14px}
+.grid{display:grid;gap:12px}
+.c-row{grid-template-columns:minmax(260px,2fr) repeat(4,minmax(90px,1fr)) auto;align-items:end}
+.fld{display:flex;flex-direction:column;gap:5px;min-width:0}
+.fld input,.fld select{border:1px solid var(--rule);background:var(--bg);color:var(--ink);padding:8px 9px;
+  font:400 13px/1.3 var(--body);font-variant-numeric:tabular-nums;min-width:0}
+.btn{border:1px solid var(--rule-hard);background:var(--ink);color:var(--bg);padding:9px 16px;cursor:pointer;
+  font:400 11px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn[disabled]{opacity:.35;cursor:default}
+.seg{display:inline-flex;gap:2px;border:1px solid var(--rule);padding:2px;background:var(--bg)}
+.seg button{font:400 10.5px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;padding:7px 11px;border:0;
+  background:transparent;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+/* ── panes ─────────────────────────────────────────────────────────── */
+.stage{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:10px;margin-top:14px}
+.vp{position:relative;border:1px solid var(--rule);background:var(--sunk);overflow:hidden;aspect-ratio:3/4}
+.vp video,.vp canvas{width:100%;height:100%;display:block}
+.vp video{object-fit:cover;background:var(--sunk)}
+.vp.lid{background:var(--lidar-bg);cursor:grab;touch-action:none}
+.vp.lid:active{cursor:grabbing}
+.vp .t{position:absolute;top:8px;left:10px;font:400 10px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(255,255,255,.92);text-shadow:0 1px 3px rgba(0,0,0,.6);pointer-events:none;z-index:2}
+.vp.lid .t{color:var(--muted);text-shadow:none}
+.vp .f{position:absolute;bottom:8px;left:10px;font:400 10.5px/1 var(--body);color:var(--faint);
+  font-variant-numeric:tabular-nums;pointer-events:none;z-index:2}
+.vp .none{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--faint);
+  font:400 11px/1.5 var(--body);letter-spacing:.1em;text-transform:uppercase;text-align:center;padding:18px}
+
+/* ── transport ─────────────────────────────────────────────────────── */
+.transport{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;margin-top:12px;
+  border:1px solid var(--rule);background:var(--paper);padding:12px 16px}
+.tbtn{border:1px solid var(--rule-hard);background:var(--ink);color:var(--bg);width:44px;height:36px;cursor:pointer;
+  font-size:13px;line-height:1}
+input[type=range]{width:100%;accent-color:var(--gold)}
+.tnum{font:400 13px/1 var(--body);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+
+.lagbar{margin-top:12px;border:1px solid var(--gold);background:color-mix(in srgb,var(--gold) 8%,transparent);
+  padding:12px 16px;display:grid;grid-template-columns:auto 1fr auto auto;gap:14px;align-items:center}
+.lagval{font-family:var(--disp);font-size:20px;color:var(--gold-6);font-variant-numeric:tabular-nums}
+
+.note{margin-top:12px;padding:10px 14px;border:1px solid var(--rule);background:var(--surface);font-size:13px;color:var(--muted)}
+.note.warn{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 9%,transparent);color:var(--ink)}
+.note.bad{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transparent);color:var(--ink)}
+.note.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 9%,transparent);color:var(--ink)}
+.bar{height:3px;background:var(--sunk);margin-top:10px}
+.bar i{display:block;height:100%;background:var(--gold);width:0;transition:width .25s}
+pre.out{max-height:260px;overflow:auto;background:var(--sunk);border:1px solid var(--rule);padding:12px;
+  font:400 11.5px/1.5 ui-monospace,Consolas,monospace;color:var(--ink);white-space:pre-wrap;margin:10px 0 0}
+table.meta{width:100%;border-collapse:collapse;margin-top:6px;font-size:12.5px}
+table.meta td{padding:4px 10px 4px 0;color:var(--muted)}
+table.meta td.v{color:var(--ink);font-variant-numeric:tabular-nums}
+@media(max-width:1180px){.stage{grid-template-columns:1fr 1fr}.c-row{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <img src="/assets/IITM.png" alt="IIT Madras">
+    <div>
+      <div class="ttl">MUMMAS · DATA CURATION</div>
+      <div class="sub">Playback-time clip finder · camera + dual VLP-16</div>
+    </div>
+    <div class="sp"></div>
+    <img src="/assets/TLC2.png" alt="TLC">
+    <button class="theme" id="themeBtn">Theme</button>
+  </header>
+
+  <!-- ── pick ── -->
+  <section class="panel">
+    <div class="grid c-row">
+      <div class="fld">
+        <label class="lbl" for="upPcap1">LiDAR 1 pcap</label>
+        <input id="upPcap1" type="file" accept=".pcap">
+      </div>
+      <div class="fld">
+        <label class="lbl" for="upPcap2">LiDAR 2 pcap (optional)</label>
+        <input id="upPcap2" type="file" accept=".pcap">
+      </div>
+      <div class="fld">
+        <label class="lbl" for="upLens">Lens number</label>
+        <select id="upLens">
+          <option value="1">1</option><option value="2">2</option>
+          <option value="3">3</option><option value="4">4</option>
+          <option value="5">5</option><option value="6">6</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label class="lbl" for="upVideo">Lens video</label>
+        <input id="upVideo" type="file" accept=".mp4">
+      </div>
+      <div class="fld">
+        <label class="lbl" for="upMeta">Session JSON (capture_stats etc.)</label>
+        <input id="upMeta" type="file" accept=".json" multiple>
+      </div>
+      <button class="btn" id="upBtn">Upload</button>
+    </div>
+    <div class="note" id="upNote" hidden></div>
+  </section>
+
+  <section class="panel">
+    <div class="grid c-row">
+      <div class="fld">
+        <label class="lbl" for="sess">Session</label>
+        <select id="sess"></select>
+      </div>
+      <div class="fld">
+        <label class="lbl" for="tin">Playback time</label>
+        <input id="tin" type="text" value="22:00" spellcheck="false">
+      </div>
+      <div class="fld">
+        <label class="lbl" for="before">Before (s)</label>
+        <input id="before" type="number" value="5" min="0" max="120" step="0.5">
+      </div>
+      <div class="fld">
+        <label class="lbl" for="after">After (s)</label>
+        <input id="after" type="number" value="40" min="1" max="300" step="0.5">
+      </div>
+      <div class="fld">
+        <label class="lbl" for="lens">Lens</label>
+        <select id="lens"></select>
+      </div>
+      <button class="btn" id="prep">Prepare window</button>
+    </div>
+    <div id="sessinfo" class="note" hidden></div>
+    <div id="errnote" class="note bad" hidden></div>
+    <div class="bar" id="barWrap" hidden><i id="bar"></i></div>
+  </section>
+
+  <!-- ── stage ── -->
+  <section class="stage" id="stage" hidden>
+    <div class="vp">
+      <video id="vid" muted playsinline preload="auto"></video>
+      <span class="t" id="vidT">Camera</span>
+      <span class="f" id="vidF"></span>
+    </div>
+    <div class="vp lid">
+      <canvas id="l1"></canvas>
+      <span class="t">VLP-16 · unit 1</span>
+      <span class="f" id="l1f"></span>
+      <div class="none" id="l1none" hidden></div>
+    </div>
+    <div class="vp lid">
+      <canvas id="l2"></canvas>
+      <span class="t">VLP-16 · unit 2</span>
+      <span class="f" id="l2f"></span>
+      <div class="none" id="l2none" hidden></div>
+    </div>
+  </section>
+
+  <div class="transport" id="transport" hidden>
+    <button class="tbtn" id="play">▶</button>
+    <input id="scrub" type="range" min="0" max="1000" value="0" step="1">
+    <span class="tnum" id="clock">0.00 / 0.00 s</span>
+  </div>
+
+  <div class="lagbar" id="lagbar" hidden>
+    <span class="lbl">LiDAR lag</span>
+    <input id="lag" type="range" min="-8" max="8" step="0.1" value="3.5">
+    <span class="lagval num" id="lagv">+3.5 s</span>
+    <button class="btn ghost" id="lagReset">Reset</button>
+  </div>
+  <div class="note" id="lagnote" hidden></div>
+  <div class="note" id="metaLagNote" hidden></div>
+
+  <!-- ── independent check: optical flow vs IMU speed ── -->
+  <section class="panel" id="imuPanel">
+    <div class="grid c-row">
+      <div class="fld">
+        <label class="lbl" for="imuFile">IMU/GPS CSV (for this session)</label>
+        <input id="imuFile" type="file" accept=".csv">
+      </div>
+      <div class="fld"></div>
+      <button class="btn ghost" id="imuBtn">Attach</button>
+      <button class="btn" id="estLagBtn">Estimate lag from IMU</button>
+    </div>
+    <div class="note" id="lagIMUnote" hidden></div>
+  </section>
+
+  <!-- ── export ── -->
+  <section class="panel" id="expPanel" hidden>
+    <div class="grid c-row">
+      <div class="fld">
+        <label class="lbl" for="outdir">Export folder</label>
+        <input id="outdir" type="text" spellcheck="false">
+      </div>
+      <div class="fld"><span class="lbl">Window</span><span class="num" id="expWin">—</span></div>
+      <div class="fld"><span class="lbl">Lag applied</span><span class="num" id="expLag">—</span></div>
+      <div class="fld"></div><div class="fld"></div>
+      <button class="btn" id="exp">Export clip</button>
+    </div>
+    <div class="note" id="expNote" hidden></div>
+    <pre class="out" id="expOut" hidden></pre>
+  </section>
+
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+const fmt = s => {
+  s = Math.max(0, s||0);
+  const m = Math.floor(s/60), r = s - m*60;
+  return `${m}:${r.toFixed(2).padStart(5,'0')}`;
+};
+
+let SESSIONS = [], W = null, lagS = 3.5, playing = false, raf = 0;
+
+/* Remember what was last being worked on. A curation pass is many small
+   exports from one session, so landing back on the first session in the list
+   after every reload is just friction. Wrapped because storage throws outright
+   in a private window rather than merely returning null. */
+const REM = 'mummas.curation.v1';
+function remember(){
+  try {
+    localStorage.setItem(REM, JSON.stringify({
+      run: (curSession()||{}).run, t: $('#tin').value,
+      before: $('#before').value, after: $('#after').value,
+      lens: $('#lens').value, lag: lagS, out: $('#outdir').value
+    }));
+  } catch(e){}
+}
+function recall(){
+  try { return JSON.parse(localStorage.getItem(REM) || 'null') || {}; }
+  catch(e){ return {}; }
+}
+
+/* theme ------------------------------------------------------------- */
+$('#themeBtn').onclick = () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : cur === 'light' ? '' : 'dark';
+  if (next) document.documentElement.setAttribute('data-theme', next);
+  else document.documentElement.removeAttribute('data-theme');
+  // the point colour is read from CSS at draw time, so repaint on a flip
+  for (const u of ['1','2']) if (SW[u] && SW[u].shown) SW[u].render(SW[u].shown);
+};
+
+/* sessions ---------------------------------------------------------- */
+async function loadSessions(){
+  const r = await fetch('/api/sessions').then(r => r.json());
+  SESSIONS = r.sessions || [];
+  if (r.export_root) $('#outdir').value = r.export_root;
+  const sel = $('#sess');
+  sel.innerHTML = SESSIONS.map((s,i) =>
+    `<option value="${i}">${s.run}  ·  ${s.l1?'L1':'--'} ${s.l2?'L2':'--'}  ·  ${fmt(s.duration)} video</option>`
+  ).join('');
+  const mem = recall();
+  if (mem.run){
+    const i = SESSIONS.findIndex(x => x.run === mem.run);
+    if (i >= 0) sel.value = String(i);          // gone from disk? fall back to first
+  }
+  sel.onchange = () => { onSession(); remember(); };
+  onSession();
+  // the lens list only exists once onSession has run
+  if (mem.t) $('#tin').value = mem.t;
+  if (mem.before) $('#before').value = mem.before;
+  if (mem.after) $('#after').value = mem.after;
+  if (mem.lens && $(`#lens option[value="${mem.lens}"]`)) $('#lens').value = mem.lens;
+  if (mem.out) $('#outdir').value = mem.out;
+  if (typeof mem.lag === 'number'){ lagS = mem.lag; $('#lag').value = lagS; updLag(); }
+  for (const id of ['#tin','#before','#after','#lens','#outdir'])
+    $(id).addEventListener('change', remember);
+}
+
+function curSession(){ return SESSIONS[+$('#sess').value] || null; }
+
+function onSession(){
+  const s = curSession(); if (!s) return;
+  note('#errnote','');
+  $('#lens').innerHTML = (s.lenses||[1]).map(n => `<option value="${n}">Lens ${n}</option>`).join('');
+  const bits = [];
+  bits.push(`video runs to <b>${fmt(s.duration)}</b>`);
+  if (!s.l2) bits.push('<b>LiDAR 2 absent</b> for this session');
+  const d = s.lens_durations || {};
+  const vals = Object.values(d);
+  if (vals.length > 1){
+    const spread = Math.max(...vals) - Math.min(...vals);
+    if (spread > 0.05) bits.push(`the six lenses start ${spread.toFixed(1)} s apart`);
+  }
+  updMetaLag();
+  const n = $('#sessinfo');
+  n.innerHTML = bits.join(' &nbsp;·&nbsp; ');
+  n.hidden = false;
+  // export needs the scanned session tree extract_session_clip.py reads
+  // from - a manually uploaded session was never part of it, so the panel
+  // is hidden rather than left to fail confusingly when clicked
+  $('#expPanel').dataset.manual = s.manual ? '1' : '';
+}
+
+function parseT(txt){
+  txt = (txt||'').trim();
+  if (!txt) return null;
+  if (txt.includes(':')){
+    const [m, s] = txt.split(':');
+    const mm = parseInt(m,10), ss = parseFloat(s);
+    if (isNaN(mm) || isNaN(ss)) return null;
+    return mm*60 + ss;
+  }
+  const v = parseFloat(txt);
+  return isNaN(v) ? null : v;
+}
+
+/* prepare ----------------------------------------------------------- */
+$('#prep').onclick = async () => {
+  const s = curSession(); if (!s) return;
+  note('#errnote','');
+  const p = parseT($('#tin').value);
+  if (p === null) return note('#errnote','Time must look like <b>22:00</b> or <b>1320</b>.','bad');
+  const before = parseFloat($('#before').value)||0;
+  const after  = parseFloat($('#after').value)||20;
+  const start  = Math.max(0, p - before), dur = before + after;
+  if (s.duration && start + dur > s.duration)
+    return note('#errnote',
+      `<b>${s.run}</b> is only <b>${fmt(s.duration)}</b> long, so ${fmt(p)} is past its end. ` +
+      `With ${before}s before and ${after}s after, pick a time between ` +
+      `<b>${fmt(before)}</b> and <b>${fmt(s.duration - after)}</b> — or choose a longer session.`, 'bad');
+
+  stopPlay();
+  $('#prep').disabled = true;
+  $('#barWrap').hidden = false; $('#bar').style.width = '0%';
+
+  const r = await fetch('/api/prepare',{method:'POST',headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({run:s.run, start_s:start, duration_s:dur, lenses:[+$('#lens').value]})}).then(r=>r.json());
+  if (r.error){ $('#prep').disabled = false; return note('#sessinfo', r.error, 'bad'); }
+
+  const poll = setInterval(async () => {
+    const j = await fetch('/api/prepare?job='+r.job).then(r=>r.json());
+    $('#bar').style.width = (j.pct||0) + '%';
+    if (j.msg) note('#sessinfo', `Preparing — ${j.msg}`, '');
+    if (j.state === 'done'){
+      clearInterval(poll); $('#prep').disabled = false; $('#barWrap').hidden = true;
+      note('#errnote','');
+      mount(j.meta);
+    } else if (j.state === 'error'){
+      clearInterval(poll); $('#prep').disabled = false; $('#barWrap').hidden = true;
+      note('#errnote', j.msg || 'prepare failed', 'bad');
+    }
+  }, 700);
+};
+
+function note(sel, html, kind){
+  const n = $(sel); n.className = 'note' + (kind ? ' '+kind : '');
+  n.innerHTML = html; n.hidden = !html;
+}
+
+/* mount a prepared window ------------------------------------------- */
+function mount(meta){
+  W = meta;
+  W.centre_s = (parseT($('#tin').value) ?? (meta.start_s + meta.duration_s/2));
+  const v = $('#vid');
+  v.src = `/w/${meta.id}/video/lens${meta.lenses[0]}.mp4`;
+  $('#vidT').textContent = `Camera · lens ${meta.lenses[0]}`;
+  $('#stage').hidden = $('#transport').hidden = $('#lagbar').hidden = false;
+  $('#expPanel').hidden = $('#expPanel').dataset.manual === '1';
+
+  for (const u of ['1','2']){
+    const info = (meta.lidar||{})[u] || {};
+    const none = $('#l'+u+'none'), cv = $('#l'+u);
+    if (info.ok){
+      none.hidden = true; cv.style.visibility = 'visible';
+      SW[u].attach(meta, info);
+    } else {
+      cv.style.visibility = 'hidden';
+      none.hidden = false;
+      none.textContent = info.reason || 'no data';
+    }
+  }
+  note('#sessinfo', `Prepared <b>${fmt(meta.start_s)}</b> → <b>${fmt(meta.start_s + meta.duration_s)}</b> of ${meta.run}.`, 'ok');
+
+  v.onloadedmetadata = () => { $('#scrub').value = 0; draw(0); updClock(); };
+  v.ontimeupdate = () => { if (!playing) updClock(); };
+  updLag();
+  $('#expWin').textContent = `${fmt(meta.start_s)} → ${fmt(meta.start_s+meta.duration_s)}  (${meta.duration_s.toFixed(1)}s)`;
+}
+
+/* the LiDAR frame for a given video time.
+   Frames were baked from t0 + start - pad, at lidar_hz. Video time t sits at
+   wall clock t0 + lag + start + t, so the index is simply that difference in
+   frames - which is why moving the lag costs nothing. */
+function frameIndex(t){
+  if (!W) return 0;
+  const wall = W.t0 + lagS + W.start_s + t;
+  return Math.round((wall - W.lidar_t_lo) * W.lidar_hz);
+}
+
+/* A rotation drawn straight onto a canvas, the way the visualisation
+   dashboard does it: points arrive as int16 centimetres plus a uint8
+   intensity, seven bytes each, pulled one rotation at a time with a Range
+   request. Colour is the page's own ink lerped up from the background by
+   intensity, so the pane belongs to the theme instead of fighting it -
+   dark ink on white, gold on near-black. Drag to swing the view. */
+const isDark = () => {
+  const a = document.documentElement.getAttribute('data-theme');
+  if (a) return a === 'dark';
+  return matchMedia('(prefers-color-scheme: dark)').matches;
+};
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+class Sweep {
+  constructor(cv, unit, yaw){
+    this.cv = cv; this.unit = unit; this.yaw = yaw;
+    this.R = 32;                       // metres across the half-width
+    this.cache = new Map(); this.shown = null; this.meta = null;
+    let drag = null;
+    // passive:false because the page must not scroll while zooming the cloud
+    cv.addEventListener('wheel', e => {
+      e.preventDefault();
+      this.R = Math.min(120, Math.max(4, this.R * (e.deltaY > 0 ? 1.12 : 0.89)));
+      if (this.shown) this.render(this.shown);
+      const f = document.querySelector('#l' + this.unit + 'f');
+      if (f) f.textContent = `${this.R.toFixed(0)} m across · drag to turn`;
+    }, {passive: false});
+    cv.addEventListener('pointerdown', e => {
+      drag = {x: e.clientX, yaw: this.yaw}; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener('pointermove', e => {
+      if (!drag) return;
+      this.yaw = drag.yaw + (e.clientX - drag.x) * 0.01;
+      if (this.shown) this.render(this.shown); });
+    cv.addEventListener('pointerup', () => drag = null);
+    cv.addEventListener('pointercancel', () => drag = null);
+  }
+  attach(meta, info){ this.meta = meta; this.info = info; this.cache.clear(); this.shown = null; }
+  get(i){
+    if (this.cache.has(i)) return this.cache.get(i);
+    const fr = this.info.frames[i];
+    if (!fr || !fr[1]) return Promise.resolve(null);
+    const [off, n] = fr;
+    const p = fetch(`/w/${this.meta.id}/lidar/lidar${this.unit}.bin`,
+                    {headers: {Range: `bytes=${off}-${off + n*7 - 1}`}})
+      .then(r => r.arrayBuffer())
+      .then(b => ({i, n, xyz: new Int16Array(b, 0, n*3), inten: new Uint8Array(b, n*6, n)}))
+      .catch(() => null);
+    this.cache.set(i, p);
+    if (this.cache.size > 48) this.cache.delete(this.cache.keys().next().value);
+    return p;
+  }
+  draw(i, label){
+    this.get(i).then(d => { if (d){ this.render(d); if (label)
+      label.textContent = `rotation ${i+1} / ${this.info.frames.length} · `
+        + `${d.n.toLocaleString()} points · ${this.R.toFixed(0)} m`; } });
+    this.get(Math.min(i+1, this.info.frames.length - 1));   // prefetch
+  }
+  render(d){
+    this.shown = d;
+    const cv = this.cv, dpr = Math.min(devicePixelRatio || 1, 2);
+    const W_ = Math.max(1, Math.round(cv.clientWidth * dpr));
+    const H_ = Math.max(1, Math.round(cv.clientHeight * dpr));
+    if (cv.width !== W_ || cv.height !== H_){ cv.width = W_; cv.height = H_; }
+    const g = cv.getContext('2d'), img = g.createImageData(W_, H_), px = img.data;
+    const bg = isDark() ? [14,13,12] : [255,255,255];
+    const ink = cssv('--lidar-ink').split(',').map(Number);
+    for (let k = 0; k < px.length; k += 4){ px[k]=bg[0]; px[k+1]=bg[1]; px[k+2]=bg[2]; px[k+3]=255; }
+    const R = this.R, S = W_/(2*R), ca = Math.cos(this.yaw), sa = Math.sin(this.yaw);
+    const cx = W_/2, cy = H_*0.6, sz = dpr >= 2 ? 2 : 1;
+    const {xyz, inten, n} = d;
+    for (let k = 0; k < n; k++){
+      const x = xyz[3*k]/100, y = xyz[3*k+1]/100, z = xyz[3*k+2]/100;
+      const X = x*ca - y*sa, Y = x*sa + y*ca;
+      const sx = (cx + X*S)|0, sy = (cy - Y*S*0.46 - z*S*0.95)|0;
+      if (sx < 0 || sy < 0 || sx >= W_-sz || sy >= H_-sz) continue;
+      const a = 0.28 + 0.72*Math.min(1, inten[k]/90);
+      const r = bg[0]+(ink[0]-bg[0])*a, gg = bg[1]+(ink[1]-bg[1])*a, b = bg[2]+(ink[2]-bg[2])*a;
+      for (let oy = 0; oy < sz; oy++) for (let ox = 0; ox < sz; ox++){
+        const o = ((sy+oy)*W_ + sx+ox)*4; px[o]=r; px[o+1]=gg; px[o+2]=b;
+      }
+    }
+    g.putImageData(img, 0, 0);
+  }
+}
+
+const SW = {1: new Sweep($('#l1'), 1,  0.5),
+            2: new Sweep($('#l2'), 2, -0.5)};
+
+function draw(t){
+  if (!W) return;
+  const i = clamp(frameIndex(t), 0, W.n_frames - 1);
+  for (const u of ['1','2']){
+    const info = (W.lidar||{})[u] || {};
+    if (!info.ok) continue;
+    SW[u].draw(i, $('#l'+u+'f'));
+  }
+  $('#vidF').textContent = `t ${t.toFixed(2)}s  ·  session ${fmt(W.start_s + t)}`;
+}
+
+function updClock(){
+  const v = $('#vid'); if (!v.duration) return;
+  $('#clock').textContent = `${v.currentTime.toFixed(2)} / ${v.duration.toFixed(2)} s`;
+  $('#scrub').value = Math.round(v.currentTime / v.duration * 1000);
+  draw(v.currentTime);
+}
+
+/* transport --------------------------------------------------------- */
+$('#play').onclick = () => playing ? stopPlay() : startPlay();
+function startPlay(){
+  const v = $('#vid'); if (!v.src) return;
+  playing = true; $('#play').textContent = '❚❚';
+  v.play().catch(()=>{});
+  const loop = () => {
+    if (!playing) return;
+    if (v.ended){ stopPlay(); return; }
+    updClock();
+    raf = requestAnimationFrame(loop);
+  };
+  raf = requestAnimationFrame(loop);
+}
+function stopPlay(){
+  playing = false; $('#play').textContent = '▶';
+  cancelAnimationFrame(raf);
+  try { $('#vid').pause(); } catch(e){}
+}
+$('#scrub').oninput = e => {
+  const v = $('#vid'); if (!v.duration) return;
+  v.currentTime = (+e.target.value/1000) * v.duration;
+  updClock();
+};
+
+/* lag --------------------------------------------------------------- */
+$('#lag').oninput = e => { lagS = parseFloat(e.target.value); updLag(); draw($('#vid').currentTime||0); remember(); };
+$('#lagReset').onclick = () => { $('#lag').value = 3.5; lagS = 3.5; updLag(); draw($('#vid').currentTime||0); };
+function updLag(){
+  $('#lagv').textContent = `${lagS>=0?'+':''}${lagS.toFixed(1)} s`;
+  $('#expLag').textContent = `${lagS>=0?'+':''}${lagS.toFixed(1)} s`;
+  // the explanation only means anything once a window is on screen
+  if (!W){ $('#lagnote').hidden = true; return; }
+  note('#lagnote',
+    `Playback <b>${fmt(W.start_s)}</b> + lag <b>${lagS>=0?'+':''}${lagS.toFixed(1)}s</b> selects the LiDAR window. ` +
+    `No timestamp is rewritten — LiDAR, IMU and GPS move together, so deskewing stays valid.`, '');
+}
+
+/* export ------------------------------------------------------------ */
+$('#exp').onclick = async () => {
+  if (!W) return;
+  $('#exp').disabled = true;
+  note('#expNote','Cutting every stream — the video is re-encoded, so this takes a few minutes…','');
+  $('#expOut').hidden = true;
+  const r = await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({run:W.run, start_s:W.start_s, duration_s:W.duration_s,
+                          centre_s:W.centre_s, lag:lagS,
+                          out:$('#outdir').value})}).then(r=>r.json());
+  $('#exp').disabled = false;
+  if (r.error) return note('#expNote', r.error, 'bad');
+  note('#expNote', r.rc === 0 ? 'Export complete.' : `Export failed (exit ${r.rc}).`, r.rc === 0 ? 'ok' : 'bad');
+  $('#expOut').hidden = false;
+  $('#expOut').textContent = (r.out || '') + (r.err ? '\n\n' + r.err : '');
+};
+
+/* manual upload --------------------------------------------------- */
+$('#upBtn').onclick = async () => {
+  const p1 = $('#upPcap1').files[0], p2 = $('#upPcap2').files[0];
+  const vid = $('#upVideo').files[0], lensN = $('#upLens').value;
+  if (!p1 && !p2) return note('#upNote', 'Choose at least one pcap file.', 'bad');
+  if (!vid) return note('#upNote', 'Choose a lens video file.', 'bad');
+
+  const fd = new FormData();
+  if (p1) fd.append('pcap1', p1);
+  if (p2) fd.append('pcap2', p2);
+  fd.append('lens' + lensN, vid);
+  // the JSON metadata files, matched to a field by their own filename so
+  // the user does not have to pick which is which - any of the three is
+  // accepted, and capture_stats is the one that actually carries the
+  // numbers the metadata-only delay needs
+  for (const f of ($('#upMeta').files || [])){
+    const n = f.name.toLowerCase();
+    if (n.includes('capture_stats')) fd.append('capture_stats', f);
+    else if (n.includes('session_meta')) fd.append('session_meta', f);
+    else if (n.includes('run_t0')) fd.append('run_t0', f);
+  }
+
+  $('#upBtn').disabled = true;
+  note('#upNote', 'Uploading and indexing — a big pcap can take a moment…', '');
+  try {
+    const r = await fetch('/api/upload', {method: 'POST', body: fd}).then(r => r.json());
+    $('#upBtn').disabled = false;
+    if (r.error) return note('#upNote', r.error, 'bad');
+    note('#upNote',
+      `Loaded as <b>${r.run}</b> — ${fmt(r.duration)} video, ` +
+      `${r.l1 ? 'LiDAR 1' : ''}${r.l1 && r.l2 ? ' + ' : ''}${r.l2 ? 'LiDAR 2' : ''}. ` +
+      (r.has_meta
+        ? `Session metadata read — the metadata-only delay estimate below is ` +
+          `available for this session, and needs no IMU or correlation.`
+        : `No usable session metadata attached (capture_stats.json is the one ` +
+          `that carries mic_end_unix and the per-lens durations), so only the ` +
+          `IMU/optical-flow estimate is available here.`) +
+      ` Export is not available for an uploaded session — it isn't part of the ` +
+      `scanned session tree extract_session_clip.py works from.`,
+      r.has_meta ? 'ok' : '');
+    // the new session becomes selectable exactly like any scanned one -
+    // loadSessions() rebuilds the same dropdown it always does
+    await loadSessions();
+    const i = SESSIONS.findIndex(s => s.run === r.run);
+    if (i >= 0) { $('#sess').value = String(i); onSession(); }
+  } catch (e) {
+    $('#upBtn').disabled = false;
+    note('#upNote', 'Upload failed: ' + e, 'bad');
+  }
+};
+
+/* metadata-only delay --------------------------------------------
+   Uses ONLY numbers already in capture_stats.json (via curSession()) - no
+   image or IMU data touched here at all, so this and the IMU-correlation
+   check below stay genuinely independent measurements of the same thing.
+   Rests on one assumption, stated rather than hidden: that every lens was
+   told to stop at the same real moment (mic_end), so a shorter recorded
+   duration means that lens started later, not that it stopped earlier. */
+function updMetaLag(){
+  const s = curSession(); const note_ = $('#metaLagNote');
+  // meta_t0 (the logger's stamped session start), NOT s.t0 - for an
+  // uploaded excerpt s.t0 is deliberately the pcap's own start so playback
+  // lands on real data, which is a different origin entirely. Using the
+  // wrong one here silently produces a nonsense delay.
+  const mt0 = (s.meta_t0 != null) ? s.meta_t0 : s.t0;
+  if (!s || s.mic_end == null || mt0 == null){
+    note_.hidden = true; return;
+  }
+  const lens = +($('#lens').value || (s.lenses||[1])[0]);
+  const dur = (s.lens_durations||{})[String(lens)];
+  if (dur == null){ note_.hidden = true; return; }
+  const span = s.mic_end - mt0;
+  const delay = span - dur;
+  note('#metaLagNote',
+    `Metadata-only estimate for lens <b>${lens}</b>: this lens's own frame 0 ` +
+    `landed <b>${delay.toFixed(3)} s</b> after t0 (session span ${span.toFixed(2)}s ` +
+    `minus this lens's own ${dur.toFixed(2)}s). Assumes every lens stopped at the ` +
+    `same real moment. ` +
+    `<button class="btn ghost" id="applyMetaLag" ` +
+    `style="padding:2px 8px;font-size:11px;margin-left:6px">Use ${delay.toFixed(2)}s</button>`,
+    '');
+  document.getElementById('applyMetaLag').onclick = () => {
+    lagS = delay; $('#lag').value = Math.max(-8, Math.min(8, lagS));
+    updLag(); draw($('#vid').currentTime||0); remember();
+  };
+}
+$('#lens').addEventListener('change', updMetaLag);
+
+/* IMU / optical-flow cross-check ------------------------------------
+   A second, independent estimate of the same delay: cross-correlates the
+   camera's own optical-flow motion against IMU speed. Deliberately does
+   NOT use the metadata delay above as a starting point or a bias - if the
+   two agree, that is real corroboration; wiring one into the other would
+   make agreement circular instead. */
+let imuAttached = {};   // run -> true, once an IMU csv has been attached
+$('#imuBtn').onclick = async () => {
+  const s = curSession(); if (!s) return;
+  const f = $('#imuFile').files[0];
+  if (!f) return note('#lagIMUnote', 'Choose an IMU CSV file first.', 'bad');
+  const fd = new FormData(); fd.append('run', s.run); fd.append('imu', f);
+  $('#imuBtn').disabled = true;
+  note('#lagIMUnote', 'Attaching\u2026', '');
+  const r = await fetch('/api/attach_imu', {method:'POST', body: fd}).then(r=>r.json());
+  $('#imuBtn').disabled = false;
+  if (r.error) return note('#lagIMUnote', r.error, 'bad');
+  imuAttached[s.run] = true;
+  note('#lagIMUnote', `Attached (${r.rows} rows). Ready to estimate.`, 'ok');
+};
+$('#estLagBtn').onclick = async () => {
+  const s = curSession(); if (!s) return;
+  if (!imuAttached[s.run]) return note('#lagIMUnote', 'Attach an IMU CSV first.', 'bad');
+  const lens = +($('#lens').value || (s.lenses||[1])[0]);
+  $('#estLagBtn').disabled = true;
+  note('#lagIMUnote', 'Estimating from optical flow vs IMU speed \u2014 this reads ' +
+    'through the video once and can take a little while on a long session\u2026', '');
+  const r = await fetch('/api/lag_estimate', {method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({run: s.run, lens})}).then(r=>r.json());
+  $('#estLagBtn').disabled = false;
+  if (r.error) return note('#lagIMUnote', r.error, 'bad');
+  const confClass = r.confidence > 0.85 ? 'ok' : r.confidence > 0.6 ? '' : 'bad';
+  let extra = '';
+  if (r.at_edge) extra = ' <b>This sits at the edge of the searched range \u2014 ' +
+    'not trustworthy as is.</b>';
+  note('#lagIMUnote',
+    `Optical-flow / IMU estimate: <b>${r.best_lag_s.toFixed(3)} s</b>, ` +
+    `confidence ${r.confidence.toFixed(2)}.${extra} ` +
+    `<button class="btn ghost" id="applyImuLag" style="padding:2px 8px;` +
+    `font-size:11px;margin-left:6px">Use ${r.best_lag_s.toFixed(2)}s</button>`,
+    confClass);
+  document.getElementById('applyImuLag').onclick = () => {
+    lagS = r.best_lag_s; $('#lag').value = Math.max(-8, Math.min(8, lagS));
+    updLag(); draw($('#vid').currentTime||0); remember();
+  };
+};
+
+loadSessions();
+</script>
+</body>
+</html>

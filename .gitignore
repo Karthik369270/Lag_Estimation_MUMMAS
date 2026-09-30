@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# prepared windows and transcoded previews - regenerated on demand, and
+# large enough to matter
+cache/
+*.bin
+
+# raw data never belongs in the repo
+*.pcap
+*.mp4
+*.csv
+
+# config holds machine-specific absolute paths; commit config.example.json
+# instead and let each machine keep its own
+config.json
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

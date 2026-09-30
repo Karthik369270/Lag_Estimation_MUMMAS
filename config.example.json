@@ -1,0 +1,23 @@
+{
+  "_help": "Copy this to config.json and edit the paths for this machine. config.json is gitignored, since these paths are machine-specific. Relative paths are relative to this folder.",
+
+  "_session_roots_help": "Folders that CONTAIN day-stamped folders (30062026, 02062026, ...). Point at the parent, not at a day folder itself, or the scan finds nothing.",
+  "session_roots": [
+    "D:\\MUMMAS DATA COLLECTION\\MUMMAS AQI BUILDING"
+  ],
+
+  "export_root": "D:\\MUMMAS EXPORTS",
+  "_pipeline_help": "Folder holding extract_session_clip.py. Only needed for export; everything else works without it.",
+  "pipeline": ".",
+
+  "_ffmpeg_help": "Full path to ffmpeg. On Windows a winget install lands somewhere like the path below - check yours rather than copying this one.",
+  "ffmpeg": "C:\\Users\\<you>\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-<version>-full_build\\bin\\ffmpeg.exe",
+
+  "_cache_help": "Scratch space for prepared windows. Omit to use the system temp dir; set it to a bigger disk if temp is tight.",
+
+  "_prepare_help": "A prepared window transcodes small upright lens videos and pre-renders LiDAR frames either side of it, so the lag slider costs nothing to move. lag_pad_s is how far beyond the window LiDAR is rendered - it caps how far the slider can travel.",
+  "preview_height": 480,
+  "lidar_hz": 10,
+  "lidar_px": 460,
+  "lag_pad_s": 8.0
+}
