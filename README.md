@@ -41,6 +41,35 @@ assets/             logos and fonts (optional; absence is cosmetic only)
 `index.html` must sit inside `app/`. `serve.py` reads it from there and will
 404 if it is moved alongside `serve.py`.
 
+## Setting up on a new machine
+
+**`config.json` is per-machine and is not in the repo** (it is gitignored,
+because every path in it is specific to one computer). A fresh clone has no
+`config.json` and will not start until you make one:
+
+```powershell
+copy config.example.json config.json
+```
+
+Then open `config.json` and edit it. Two rules that between them cause most
+first-run failures:
+
+**Leave `ffmpeg` empty.** The server finds ffmpeg by itself - on PATH, then
+in the usual Windows install locations - and prints where it found it on
+startup. Only set a path if it reports finding nothing.
+
+**Never leave an `<angle bracket>` placeholder in a path.** A half-replaced
+one (say `ffmpeg-<version>-full_build` with only the username filled in) is
+a path that does not exist, and it surfaces later as a bare
+`[WinError 2] The system cannot find the file specified` when you press
+Prepare Window - which reads like a missing pcap or video and sends you
+looking in entirely the wrong place. The server now detects this at startup
+and says so, and falls back to autodetection rather than failing.
+
+If you only ever upload files through the browser, `session_roots` can stay
+empty and `pipeline` can stay `"."`. Those matter only for scanned sessions
+and for export.
+
 ## config.json
 
 | key | meaning |
@@ -48,7 +77,7 @@ assets/             logos and fonts (optional; absence is cosmetic only)
 | `session_roots` | folders that **contain** day-stamped folders (`30062026`, …). Point at the parent, not at a day folder itself. |
 | `export_root` | default output directory for exported clips |
 | `pipeline` | folder holding `extract_session_clip.py` (export only) |
-| `ffmpeg` | full path to `ffmpeg` |
+| `ffmpeg` | leave empty to autodetect; a full path only if that fails |
 | `cache_dir` | scratch space for prepared windows; defaults to the system temp dir |
 | `preview_height`, `lidar_px`, `lidar_hz`, `lag_pad_s` | preview size and how far the lag slider can travel |
 
