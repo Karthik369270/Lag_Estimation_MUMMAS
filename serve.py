@@ -80,7 +80,90 @@ with open(os.path.join(ROOT, "config.json"), encoding="utf-8") as fh:
 CACHE = CFG.get("cache_dir") or os.path.join(
     tempfile.gettempdir(), "mummas_curation_cache")
 
-FFMPEG = CFG.get("ffmpeg") or "ffmpeg"
+def _autodetect_ffmpeg():
+    """Find ffmpeg without being told where it is.
+
+    Tried in order: PATH, then the usual Windows install locations. The
+    winget package folder carries the version in its name
+    (ffmpeg-9.0.2-full_build), so it is globbed rather than spelled out -
+    an upgrade changes that name, and a hardcoded path silently stops
+    working.
+    """
+    found = shutil.which("ffmpeg")
+    if found:
+        return found
+    home = os.environ.get("USERPROFILE") or os.path.expanduser("~")
+    roots = [
+        os.path.join(home, "AppData", "Local", "Microsoft", "WinGet",
+                     "Packages"),
+        os.path.join(home, "scoop", "apps", "ffmpeg"),
+        r"C:\ffmpeg", r"C:\Program Files\ffmpeg",
+        r"C:\Program Files (x86)\ffmpeg",
+    ]
+    import glob
+    for root in roots:
+        if not os.path.isdir(root):
+            continue
+        hits = glob.glob(os.path.join(root, "**", "ffmpeg.exe"),
+                         recursive=True)
+        if hits:
+            return sorted(hits)[-1]      # newest version sorts last
+    return None
+
+
+# config.json wins when it points at something real. Otherwise fall back to
+# autodetection rather than failing: the configured path is the single most
+# common thing to be wrong on a new machine - a fresh clone copies
+# config.example.json and its placeholders are easy to half-replace, and a
+# winget upgrade renames the folder underneath a path that used to work.
+_cfg_ffmpeg = CFG.get("ffmpeg") or ""
+_cfg_ok = bool(_cfg_ffmpeg) and (
+    os.path.isfile(_cfg_ffmpeg) if ("\\" in _cfg_ffmpeg or "/" in _cfg_ffmpeg)
+    else shutil.which(_cfg_ffmpeg) is not None)
+FFMPEG_AUTODETECTED = False
+if _cfg_ok:
+    FFMPEG = _cfg_ffmpeg
+else:
+    _found = _autodetect_ffmpeg()
+    if _found:
+        FFMPEG = _found
+        FFMPEG_AUTODETECTED = True
+    else:
+        FFMPEG = _cfg_ffmpeg or "ffmpeg"
+
+# Check ffmpeg at startup rather than letting it fail mid-prepare. A bad
+# path surfaces there as a bare "[WinError 2] The system cannot find the
+# file specified", which reads like a missing pcap or video and sends you
+# looking in the wrong place entirely - the missing file is the ffmpeg
+# executable itself. Two ways to get here: a fresh clone whose config.json
+# was copied from config.example.json and still has its <placeholder>
+# path, or a real install that moved (a winget ffmpeg upgrade changes the
+# version number in its folder name).
+def _check_ffmpeg():
+    exe = FFMPEG
+    # Check for BOTH separators, not os.path.sep: a Windows path in
+    # config.json must still be recognised as a path when this is read on
+    # any platform, and vice versa. Using os.path.sep alone made a
+    # backslash path fall through to the PATH branch and report
+    # "not on PATH" for what is plainly a file path.
+    if "\\" in exe or "/" in exe:
+        if os.path.isfile(exe):
+            return None
+        if "<" in exe or ">" in exe:
+            return (f"config.json still has the placeholder ffmpeg path from\n"
+                    f"config.example.json:\n    {exe}\n"
+                    f"Replace it with the real path to ffmpeg.exe on this "
+                    f"machine.")
+        return (f"ffmpeg not found at the path in config.json:\n    {exe}\n"
+                f"If ffmpeg was upgraded its folder name changes with the "
+                f"version - check the current path.")
+    if shutil.which(exe) is None:
+        return (f"'{exe}' is not on PATH. Put the full path to ffmpeg.exe in "
+                f"config.json under \"ffmpeg\".")
+    return None
+
+
+FFMPEG_PROBLEM = _check_ffmpeg()
 PREVIEW_H = int(CFG.get("preview_height", 480))
 LIDAR_HZ = int(CFG.get("lidar_hz", 10))
 LIDAR_PX = int(CFG.get("lidar_px", 460))
@@ -475,7 +558,18 @@ def _prepare(job_id, run, start_s, dur_s, lenses):
             json.dump(meta, fh, indent=2)
         note(state="done", pct=100, msg="ready", meta=meta)
     except Exception as exc:
-        note(state="error", msg=f"{exc}",
+        msg = f"{exc}"
+        # A FileNotFoundError here is almost always ffmpeg, not the pcap or
+        # the video - on Windows it surfaces as a bare "[WinError 2] The
+        # system cannot find the file specified", which names nothing and
+        # reads like missing data. Say which file is actually missing.
+        if isinstance(exc, FileNotFoundError) or "WinError 2" in msg:
+            if FFMPEG_PROBLEM:
+                msg = f"{msg}  -  {FFMPEG_PROBLEM}"
+            else:
+                msg = (f"{msg}  -  this is usually ffmpeg rather than a data "
+                       f"file. config.json points at: {FFMPEG}")
+        note(state="error", msg=msg,
              trace=traceback.format_exc()[-1500:])
 
 
@@ -809,6 +903,20 @@ def main():
     srv = ThreadingHTTPServer(("127.0.0.1", a.port), Handler)
     url = f"http://localhost:{a.port}"
     print(f"MUMMAS data curation dashboard  ->  {url}")
+    if FFMPEG_AUTODETECTED:
+        if _cfg_ffmpeg:
+            print(f"\n  note: the ffmpeg path in config.json does not exist "
+                  f"on this machine,\n        so ffmpeg was found "
+                  f"automatically instead:\n          {FFMPEG}\n"
+                  f"        Correct config.json to silence this.\n")
+        else:
+            print(f"  ffmpeg: {FFMPEG}  (found automatically)")
+    if FFMPEG_PROBLEM:
+        print("\n  ! ffmpeg problem - uploading and the metadata-only delay\n"
+              "    estimate will still work, but PREPARE WINDOW will fail:\n")
+        for line in FFMPEG_PROBLEM.splitlines():
+            print(f"    {line}")
+        print()
     print("Ctrl+C to stop.")
     if not a.no_browser:
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
